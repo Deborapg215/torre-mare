@@ -17,6 +17,7 @@
       .app.active { display: grid; }
       .userbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
       .userbar button { min-height: 30px; padding: 0 10px; font-size: 12px; }
+      .nav-group-label { display: block; margin: 14px 0 2px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
       :root {
         --bg: #f6f7f5;
         --panel: #fff;
@@ -63,6 +64,8 @@
       .card strong { display: block; margin-top: 18px; font-size: 24px; }
       label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
       input, select { min-height: 42px; width: 100%; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--text); font: inherit; padding: 0 10px; }
+      input[type="checkbox"] { min-height: auto; width: 16px; height: 16px; flex: none; accent-color: var(--accent); }
+      .checkbox-row { flex-direction: row; align-items: center; gap: 8px; }
       table { width: 100%; min-width: 860px; border-collapse: collapse; margin-top: 12px; }
       th, td { border-bottom: 1px solid var(--line); padding: 10px 6px; text-align: left; font-size: 14px; vertical-align: middle; }
       th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
@@ -106,6 +109,8 @@
           <a href="#pagar" data-view-link="pagar">Contas a Pagar</a>
           <a href="#categorias" data-view-link="categorias">Categorias</a>
           <a href="#bancos" data-view-link="bancos">Bancos</a>
+          <span class="nav-group-label">Cadastros Gerais</span>
+          <a href="#pessoas" data-view-link="pessoas">Pessoas</a>
           <a href="#conciliacao" data-view-link="conciliacao">Conciliacao Bancaria</a>
           <a href="#relatorios" data-view-link="relatorios">Relatorios</a>
         </nav>
@@ -196,14 +201,35 @@
                 <label>Status<select id="contract-status"><option>Ativo</option><option>Em analise</option><option>Encerrado</option></select></label>
                 <label>Aluguel<input id="contract-rent" type="number" min="0" step="0.01" value="0" required /></label>
                 <label>IPTU<input id="contract-iptu" type="number" min="0" step="0.01" value="0" /></label>
+                <label>IPTU gera lancamento?<select id="contract-iptu-generates"><option value="yes">Sim</option><option value="no">Nao (so controle)</option></select></label>
                 <label>Condominio<input id="contract-condo" type="number" min="0" step="0.01" value="0" /></label>
+                <label>Condominio gera lancamento?<select id="contract-condo-generates"><option value="yes">Sim</option><option value="no">Nao (so controle)</option></select></label>
                 <label>Multa %<input id="contract-fine" type="number" min="0" step="0.01" value="10" /></label>
                 <label>Repasse ao proprietario<input id="contract-owner-pay" type="number" min="0" step="0.01" value="0" /></label>
+                <label>Repasse gera lancamento?<select id="contract-owner-pay-generates"><option value="yes">Sim</option><option value="no">Nao (so controle)</option></select></label>
+              </div>
+              <div class="card" style="margin: 14px 0; box-shadow: none; border: 1px dashed var(--line)">
+                <span>Outros encargos (opcional)</span>
+                <div class="form-grid">
+                  <label>Tipo<select id="charge-type"><option value="despesa">Despesa</option><option value="receita">Receita</option></select></label>
+                  <label>Descricao<input id="charge-description" placeholder="Ex: Taxa de administracao" /></label>
+                  <label>Valor<input id="charge-value" type="number" min="0" step="0.01" /></label>
+                  <label>Recorrencia<select id="charge-recurrence"><option value="mensal">Mensal</option><option value="unico">Unico</option></select></label>
+                  <label>Gera lancamento?<select id="charge-generates"><option value="yes">Sim</option><option value="no">Nao (so controle)</option></select></label>
+                  <label>Acao<button type="button" id="add-charge">Adicionar encargo</button></label>
+                </div>
+                <table><thead><tr><th>Tipo</th><th>Descricao</th><th>Valor</th><th>Recorrencia</th><th>Gera lancamento</th><th></th></tr></thead><tbody id="charges-table"></tbody></table>
+                <p class="empty" id="empty-charges">Nenhum encargo adicional adicionado.</p>
               </div>
               <div class="form-actions"><button type="button" data-cancel-form="contract">Limpar</button><button class="primary" type="submit">Salvar contrato e gerar contas</button></div>
             </form>
           </article>
-          <article class="card" style="margin-top: 14px"><span>Contratos cadastrados</span><table><thead><tr><th>Imovel</th><th>Locatario</th><th>Aluguel</th><th>IPTU</th><th>Condominio</th><th>Total mensal</th><th>Parcelas</th><th></th></tr></thead><tbody id="contracts-table"></tbody></table><p class="empty" id="empty-contracts">Nenhum contrato cadastrado ainda.</p></article>
+          <article class="card" style="margin-top: 14px">
+            <span>Contratos cadastrados</span>
+            <div class="form-grid" style="margin-bottom: 12px"><label>Buscar<input id="contract-search" placeholder="Locatario ou imovel" /></label></div>
+            <table><thead><tr><th>Imovel</th><th>Locatario</th><th>Aluguel</th><th>IPTU</th><th>Condominio</th><th>Total mensal</th><th>Parcelas</th><th></th></tr></thead><tbody id="contracts-table"></tbody></table>
+            <p class="empty" id="empty-contracts">Nenhum contrato cadastrado ainda.</p>
+          </article>
         </section>
 
         <section class="view" id="view-receber">
@@ -227,7 +253,7 @@
             <form id="payable-form">
               <input id="payable-id" type="hidden" />
               <div class="form-grid">
-                <label>Fornecedor<input id="payable-vendor" required placeholder="Ex: Manutencao Predial Ltda" /></label>
+                <label>Fornecedor<select id="payable-vendor" required></select></label>
                 <label>Categoria<select id="payable-category" required></select></label>
                 <label>Imovel (opcional)<select id="payable-property"><option value="">Sem imovel vinculado</option></select></label>
                 <label>Vencimento<input id="payable-due" type="date" required /></label>
@@ -294,6 +320,28 @@
           <article class="card" style="margin-top: 14px"><span>Bancos cadastrados</span><table><thead><tr><th>Nome</th><th></th></tr></thead><tbody id="banks-table"></tbody></table><p class="empty" id="empty-banks">Nenhum banco cadastrado ainda.</p></article>
         </section>
 
+        <section class="view" id="view-pessoas">
+          <article class="card">
+            <span id="contact-form-title">Nova pessoa</span>
+            <form id="contact-form">
+              <input id="contact-id" type="hidden" />
+              <div class="form-grid">
+                <label>Nome<input id="contact-name" required placeholder="Ex: Joao da Silva ou Empresa LTDA" /></label>
+                <label>CPF/CNPJ (opcional)<input id="contact-doc" /></label>
+                <label>Telefone (opcional)<input id="contact-phone" /></label>
+                <label>E-mail (opcional)<input id="contact-email" type="email" /></label>
+              </div>
+              <div class="form-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+                <label class="checkbox-row"><input id="contact-type-cliente" type="checkbox" /> Cliente</label>
+                <label class="checkbox-row"><input id="contact-type-fornecedor" type="checkbox" /> Fornecedor</label>
+                <label class="checkbox-row"><input id="contact-type-funcionario" type="checkbox" /> Funcionario</label>
+              </div>
+              <div class="form-actions"><button type="button" data-cancel-form="contact">Limpar</button><button class="primary" type="submit">Salvar pessoa</button></div>
+            </form>
+          </article>
+          <article class="card" style="margin-top: 14px"><span>Pessoas cadastradas</span><table><thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Telefone</th><th></th></tr></thead><tbody id="contacts-table"></tbody></table><p class="empty" id="empty-contacts">Nenhuma pessoa cadastrada ainda.</p></article>
+        </section>
+
         <section class="view" id="view-relatorios">
           <article class="card">
             <span>Filtros dos relatorios</span>
@@ -313,6 +361,24 @@
             <article class="card"><span>Pago</span><strong id="report-paid">R$ 0,00</strong></article>
           </section>
           <article class="card" style="margin-top: 14px"><span>Relatorio</span><table><thead><tr><th>Data</th><th>Pessoa</th><th>Imovel</th><th>Descricao</th><th>Valor</th><th>Status</th><th>Banco</th></tr></thead><tbody id="report-table"></tbody></table><p class="empty" id="empty-report">Nenhum item encontrado.</p></article>
+
+          <article class="card" style="margin-top: 14px">
+            <span>DRE - Regime de Caixa</span>
+            <p class="subtitle" style="margin: 4px 0 12px">Considera apenas contas ja pagas/recebidas, pela data de baixa.</p>
+            <div class="filters">
+              <label>De<input id="dre-from" type="date" /></label>
+              <label>Ate<input id="dre-to" type="date" /></label>
+            </div>
+          </article>
+          <section class="kpis" style="margin-top: 14px">
+            <article class="card"><span>Total de Receitas</span><strong id="dre-receitas">R$ 0,00</strong></article>
+            <article class="card"><span>Total de Despesas</span><strong id="dre-despesas">R$ 0,00</strong></article>
+            <article class="card"><span>Resultado do Periodo</span><strong id="dre-resultado">R$ 0,00</strong></article>
+          </section>
+          <div class="filters" style="margin-top: 14px; grid-template-columns: 1fr 1fr">
+            <article class="card"><span>Receitas por categoria</span><table><thead><tr><th>Categoria</th><th>Valor</th></tr></thead><tbody id="dre-receitas-table"></tbody></table><p class="empty" id="empty-dre-receitas">Nenhuma receita recebida no periodo.</p></article>
+            <article class="card"><span>Despesas por categoria</span><table><thead><tr><th>Categoria</th><th>Valor</th></tr></thead><tbody id="dre-despesas-table"></tbody></table><p class="empty" id="empty-dre-despesas">Nenhuma despesa paga no periodo.</p></article>
+          </div>
         </section>
       </main>
     </div>
@@ -359,11 +425,11 @@
           <label style="grid-column: 1 / -1">Descricao<input id="bank-create-description" required /></label>
         </div>
         <div class="form-grid" id="bank-create-payable-fields">
-          <label>Fornecedor<input id="bank-create-vendor" placeholder="Ex: Cartorio, Prestador" /></label>
+          <label>Fornecedor<select id="bank-create-vendor"></select></label>
           <label>Categoria<select id="bank-create-category"></select></label>
         </div>
         <div class="form-grid" id="bank-create-receivable-fields" style="display: none">
-          <label>Cliente<input id="bank-create-client" placeholder="Nome do pagador" /></label>
+          <label>Cliente<select id="bank-create-client"></select></label>
           <label>Categoria (opcional)<select id="bank-create-revenue-category"><option value="">Sem categoria</option></select></label>
           <label>Locatario (opcional)<select id="bank-create-tenant"><option value="">Sem locatario vinculado</option></select></label>
           <label>Imovel (opcional)<select id="bank-create-property"><option value="">Sem imovel vinculado</option></select></label>
@@ -377,34 +443,44 @@
       const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrd2hydWlsdG1pZnFsd2pocWJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzQzNjgsImV4cCI6MjA5OTYxMDM2OH0.-Y5KLE1IVLg-6Sw1arOD0H93YYYcJDoDh-TTa9ANwE8";
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      const store = { tenants: [], owners: [], properties: [], contracts: [], receivables: [], payables: [], bankEntries: [], expenseCategories: [], banks: [] };
-      const pendingDeletes = { tenants: [], owners: [], properties: [], contracts: [], receivables: [], payables: [], bankEntries: [], expenseCategories: [], banks: [] };
+      const store = { tenants: [], owners: [], properties: [], contracts: [], receivables: [], payables: [], bankEntries: [], expenseCategories: [], banks: [], people: [], contractItems: [] };
+      const pendingDeletes = { tenants: [], owners: [], properties: [], contracts: [], receivables: [], payables: [], bankEntries: [], expenseCategories: [], banks: [], people: [], contractItems: [] };
 
       // ---- Mapeamento store (camelCase) <-> tabelas Supabase (snake_case) ----
-      const TABLE_NAME = { tenants: "tenants", owners: "owners", properties: "properties", contracts: "contracts", receivables: "receivables", payables: "payables", bankEntries: "bank_entries", expenseCategories: "expense_categories", banks: "banks" };
+      const TABLE_NAME = { tenants: "tenants", owners: "owners", properties: "properties", contracts: "contracts", receivables: "receivables", payables: "payables", bankEntries: "bank_entries", expenseCategories: "expense_categories", banks: "banks", people: "people", contractItems: "contract_items" };
 
       function toRow(entity, item) {
         if (entity === "tenants") return { id: item.id, name: item.name, doc: item.doc || null, phone: item.phone || null, email: item.email || null };
         if (entity === "owners") return { id: item.id, name: item.name, doc: item.doc || null, phone: item.phone || null };
         if (entity === "properties") return { id: item.id, name: item.name, building: item.building || null, owner_id: item.ownerId || null, address: item.address || null, type: item.type || null, status: item.status || "Disponivel" };
-        if (entity === "contracts") return { id: item.id, tenant_id: item.tenantId || item.clientId || null, property_id: item.propertyId || null, start_date: item.start || null, months: item.months || 0, due_day: item.dueDay || null, status: item.status || "Ativo", rent: item.rent || 0, iptu: item.iptu || 0, condo: item.condo || 0, fine_percent: item.finePercent || 0, owner_pay: item.ownerPay || 0, total: item.total || 0 };
+        if (entity === "contracts") return { id: item.id, tenant_id: item.tenantId || item.clientId || null, property_id: item.propertyId || null, start_date: item.start || null, months: item.months || 0, due_day: item.dueDay || null, status: item.status || "Ativo", rent: item.rent || 0, iptu: item.iptu || 0, condo: item.condo || 0, fine_percent: item.finePercent || 0, owner_pay: item.ownerPay || 0, total: item.total || 0, iptu_generates: item.iptuGenerates !== false, condo_generates: item.condoGenerates !== false, owner_pay_generates: item.ownerPayGenerates !== false };
+        if (entity === "contractItems") return { id: item.id, contract_id: item.contractId || null, type: item.type || "despesa", description: item.description || null, value: item.value || 0, recurrence: item.recurrence || "mensal", generates_entry: item.generatesEntry !== false };
         if (entity === "receivables") return { id: item.id, contract_id: item.contractId || null, tenant_id: item.tenantId || item.clientId || null, property_id: item.propertyId || null, client_name: item.clientName || null, category: item.category || null, due_date: item.dueDate || null, description: item.description || null, total: item.total || 0, status: item.status || "Aberto", bank: item.bank || null, paid_date: item.paidDate || null };
         if (entity === "payables") return { id: item.id, contract_id: item.contractId || null, property_id: item.propertyId || null, supplier: item.vendor || null, category: item.category || null, due_date: item.dueDate || null, description: item.description || null, value: item.value || 0, status: item.status || "Aberto", bank: item.bank || null, paid_date: item.paidDate || null };
         if (entity === "bankEntries") return { id: item.id, bank: item.bank || null, entry_date: item.date || null, amount: item.amount || 0, description: item.description || null, fitid: item.fitid || null, status: item.status || "Importado", imported_at: item.importedAt || null };
         if (entity === "expenseCategories") return { id: item.id, name: item.name, description: item.description || null, type: item.type || "despesa" };
         if (entity === "banks") return { id: item.id, name: item.name };
+        if (entity === "people") return { id: item.id, name: item.name, doc: item.doc || null, phone: item.phone || null, email: item.email || null, is_client: !!(item.types && item.types.includes("cliente")), is_supplier: !!(item.types && item.types.includes("fornecedor")), is_employee: !!(item.types && item.types.includes("funcionario")) };
         return item;
       }
       function fromRow(entity, row) {
         if (entity === "tenants") return { id: row.id, name: row.name, doc: row.doc || "", phone: row.phone || "", email: row.email || "" };
         if (entity === "owners") return { id: row.id, name: row.name, doc: row.doc || "", phone: row.phone || "" };
         if (entity === "properties") return { id: row.id, name: row.name, building: row.building || "", ownerId: row.owner_id || "", address: row.address || "", type: row.type || "", status: row.status || "Disponivel" };
-        if (entity === "contracts") return { id: row.id, tenantId: row.tenant_id || "", propertyId: row.property_id || "", start: row.start_date || "", months: row.months || 0, dueDay: row.due_day || 5, status: row.status || "Ativo", rent: Number(row.rent || 0), iptu: Number(row.iptu || 0), condo: Number(row.condo || 0), finePercent: Number(row.fine_percent || 0), ownerPay: Number(row.owner_pay || 0), total: Number(row.total || 0) };
+        if (entity === "contracts") return { id: row.id, tenantId: row.tenant_id || "", propertyId: row.property_id || "", start: row.start_date || "", months: row.months || 0, dueDay: row.due_day || 5, status: row.status || "Ativo", rent: Number(row.rent || 0), iptu: Number(row.iptu || 0), condo: Number(row.condo || 0), finePercent: Number(row.fine_percent || 0), ownerPay: Number(row.owner_pay || 0), total: Number(row.total || 0), iptuGenerates: row.iptu_generates !== false, condoGenerates: row.condo_generates !== false, ownerPayGenerates: row.owner_pay_generates !== false };
+        if (entity === "contractItems") return { id: row.id, contractId: row.contract_id || "", type: row.type || "despesa", description: row.description || "", value: Number(row.value || 0), recurrence: row.recurrence || "mensal", generatesEntry: row.generates_entry !== false };
         if (entity === "receivables") return { id: row.id, contractId: row.contract_id || "", tenantId: row.tenant_id || "", propertyId: row.property_id || "", clientName: row.client_name || "", category: row.category || "", dueDate: row.due_date || "", description: row.description || "", total: Number(row.total || 0), status: row.status || "Aberto", bank: row.bank || "", paidDate: row.paid_date || "" };
         if (entity === "payables") return { id: row.id, contractId: row.contract_id || "", propertyId: row.property_id || "", vendor: row.supplier || "", category: row.category || "", dueDate: row.due_date || "", description: row.description || "", value: Number(row.value || 0), status: row.status || "Aberto", bank: row.bank || "", paidDate: row.paid_date || "" };
         if (entity === "bankEntries") return { id: row.id, bank: row.bank || "", date: row.entry_date || "", amount: Number(row.amount || 0), description: row.description || "", fitid: row.fitid || "", status: row.status || "Importado", importedAt: row.imported_at || "" };
         if (entity === "expenseCategories") return { id: row.id, name: row.name, description: row.description || "", type: row.type || "despesa" };
         if (entity === "banks") return { id: row.id, name: row.name };
+        if (entity === "people") {
+          const types = [];
+          if (row.is_client) types.push("cliente");
+          if (row.is_supplier) types.push("fornecedor");
+          if (row.is_employee) types.push("funcionario");
+          return { id: row.id, name: row.name, doc: row.doc || "", phone: row.phone || "", email: row.email || "", types };
+        }
         return row;
       }
 
@@ -493,6 +569,7 @@
         relatorios: ["Relatorios", "Relatorios filtraveis de contas a pagar e receber."],
         categorias: ["Categorias", "Cadastro de categorias de despesas e receitas."],
         bancos: ["Bancos", "Cadastro de bancos usados nas baixas e no extrato."],
+        pessoas: ["Pessoas", "Cadastro geral de clientes, fornecedores e funcionarios."],
       };
       const $ = (id) => document.getElementById(id);
       const byId = (list, itemId) => list.find((item) => item.id === itemId);
@@ -522,12 +599,8 @@
       }
       function table(tableId, emptyId, rows, mapper) {
         const body = $(tableId);
-        body.innerHTML = "";
-        rows.forEach((item) => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = mapper(item).map((cell) => `<td>${cell}</td>`).join("");
-          body.appendChild(tr);
-        });
+        const html = rows.map((item) => "<tr>" + mapper(item).map((cell) => `<td>${cell}</td>`).join("") + "</tr>").join("");
+        if (body.innerHTML !== html) body.innerHTML = html;
         $(emptyId).style.display = rows.length ? "none" : "block";
       }
       function fillSelect(elementId, list, emptyText) {
@@ -595,7 +668,13 @@
       }
       function renderContracts() {
         const active = store.contracts.filter((item) => item.status === "Ativo");
-        table("contracts-table", "empty-contracts", store.contracts, (item) => {
+        const query = ($("contract-search").value || "").trim().toLowerCase();
+        const visible = !query ? store.contracts : store.contracts.filter((item) => {
+          const tenant = byId(store.tenants, item.tenantId || item.clientId);
+          const property = byId(store.properties, item.propertyId);
+          return `${tenant?.name || ""} ${property?.name || ""}`.toLowerCase().includes(query);
+        });
+        table("contracts-table", "empty-contracts", visible, (item) => {
           const tenant = byId(store.tenants, item.tenantId || item.clientId);
           const property = byId(store.properties, item.propertyId);
           return [property ? property.name : "Imovel removido", tenant ? tenant.name : "Locatario removido", money.format(item.rent || 0), money.format(item.iptu || 0), money.format(item.condo || 0), money.format(item.total || 0), String(item.months || 0), `<button class="small" data-edit-contract="${item.id}">Editar</button> <button class="danger small" data-delete-contract="${item.id}">Excluir</button>`];
@@ -615,12 +694,12 @@
           const tenant = byId(store.tenants, item.tenantId || item.clientId);
           const property = byId(store.properties, item.propertyId);
           const payLabel = item.status === "Pago" ? "Reabrir" : "Marcar pago";
-          return [asDate(item.dueDate), tenant ? tenant.name : (item.tenantId ? "Locatario removido" : (item.clientName || "-")), property ? property.name : "Imovel removido", item.description || "-", money.format(item.total || 0), item.status, item.bank || "-", asDate(item.paidDate), `<button class="small" data-edit-receivable="${item.id}">Editar</button> <button class="small" data-pay-receivable="${item.id}">${payLabel}</button> <button class="small" data-receipt="${item.id}">Recibo</button>`];
+          return [asDate(item.dueDate), tenant ? tenant.name : (item.tenantId ? "Locatario removido" : (item.clientName || "-")), property ? property.name : "Imovel removido", item.description || "-", money.format(item.total || 0), item.status, item.bank || "-", asDate(item.paidDate), `<button class="small" data-edit-receivable="${item.id}">Editar</button> <button class="small" data-pay-receivable="${item.id}">${payLabel}</button> <button class="small" data-receipt="${item.id}">Recibo</button> <button class="danger small" data-delete-receivable="${item.id}">Excluir</button>`];
         });
         table("payables-table", "empty-payables", payables, (item) => {
           const property = byId(store.properties, item.propertyId);
           const payLabel = item.status === "Pago" ? "Reabrir" : "Marcar pago";
-          return [asDate(item.dueDate), item.vendor || "-", property ? property.name : "Imovel removido", item.category || "-", item.description || "-", money.format(item.value || 0), item.status, item.bank || "-", asDate(item.paidDate), `<button class="small" data-edit-payable="${item.id}">Editar</button> <button class="small" data-pay-payable="${item.id}">${payLabel}</button>`];
+          return [asDate(item.dueDate), item.vendor || "-", property ? property.name : "Imovel removido", item.category || "-", item.description || "-", money.format(item.value || 0), item.status, item.bank || "-", asDate(item.paidDate), `<button class="small" data-edit-payable="${item.id}">Editar</button> <button class="small" data-pay-payable="${item.id}">${payLabel}</button> <button class="danger small" data-delete-payable="${item.id}">Excluir</button>`];
         });
         const pendingReceivables = store.receivables.filter((item) => item.status !== "Pago");
         const pendingPayables = store.payables.filter((item) => item.status !== "Pago");
@@ -651,6 +730,32 @@
         $("report-total").textContent = money.format(rows.reduce((sum, item) => sum + itemAmount(kind, item), 0));
         $("report-count").textContent = String(rows.length);
       }
+      function renderDre() {
+        const from = $("dre-from").value;
+        const to = $("dre-to").value;
+        const inRange = (dateStr) => dateStr && (!from || dateStr >= from) && (!to || dateStr <= to);
+        const paidReceivables = store.receivables.filter((item) => item.status === "Pago" && inRange(item.paidDate));
+        const paidPayables = store.payables.filter((item) => item.status === "Pago" && inRange(item.paidDate));
+        const revenueGroups = {};
+        paidReceivables.forEach((item) => {
+          const label = item.category || (item.description && item.description.indexOf("Aluguel") === 0 ? "Aluguel" : "Outras receitas");
+          revenueGroups[label] = (revenueGroups[label] || 0) + Number(item.total || 0);
+        });
+        const expenseGroups = {};
+        paidPayables.forEach((item) => {
+          const label = item.category || "Outras despesas";
+          expenseGroups[label] = (expenseGroups[label] || 0) + Number(item.value || 0);
+        });
+        const totalRevenue = Object.values(revenueGroups).reduce((sum, value) => sum + value, 0);
+        const totalExpense = Object.values(expenseGroups).reduce((sum, value) => sum + value, 0);
+        $("dre-receitas").textContent = money.format(totalRevenue);
+        $("dre-despesas").textContent = money.format(totalExpense);
+        $("dre-resultado").textContent = money.format(totalRevenue - totalExpense);
+        const revenueRows = Object.entries(revenueGroups).sort((a, b) => b[1] - a[1]);
+        const expenseRows = Object.entries(expenseGroups).sort((a, b) => b[1] - a[1]);
+        table("dre-receitas-table", "empty-dre-receitas", revenueRows, (row) => [row[0], money.format(row[1])]);
+        table("dre-despesas-table", "empty-dre-despesas", expenseRows, (row) => [row[0], money.format(row[1])]);
+      }
       function renderCategories() {
         table("categories-table", "empty-categories", store.expenseCategories, (item) => [
           item.name, item.type === "receita" ? "Receita" : "Despesa", item.description || "-",
@@ -675,21 +780,70 @@
         $("payment-bank").innerHTML = options;
         $("account-bank").innerHTML = "<option value=\"\">Selecione</option>" + store.banks.map((item) => "<option value=\"" + item.name + "\">" + item.name + "</option>").join("");
       }
-      function renderAll() {
-        renderPeople(); renderProperties(); renderContracts(); renderAccounts(); renderBank(); renderReport(); renderCategories(); renderBanks();
+      function typeLabel(types) {
+        const map = { cliente: "Cliente", fornecedor: "Fornecedor", funcionario: "Funcionario" };
+        return (types || []).map((t) => map[t] || t).join(", ") || "-";
       }
-      function addContractAccounts(contract) {
+      function renderContacts() {
+        table("contacts-table", "empty-contacts", store.people, (item) => [
+          item.name, typeLabel(item.types), item.doc || "-", item.phone || "-",
+          `<button class="small" data-edit-contact="${item.id}">Editar</button> <button class="danger small" data-delete-contact="${item.id}">Excluir</button>`,
+        ]);
+        const suppliers = store.people.filter((item) => item.types && (item.types.includes("fornecedor") || item.types.includes("funcionario")));
+        const clients = store.people.filter((item) => item.types && item.types.includes("cliente"));
+        const supplierOptions = suppliers.length
+          ? suppliers.map((item) => "<option value=\"" + item.name + "\">" + item.name + "</option>").join("")
+          : "<option value=\"\">Cadastre um fornecedor em Pessoas</option>";
+        const clientOptions = "<option value=\"\">Sem cliente selecionado</option>" + clients.map((item) => "<option value=\"" + item.name + "\">" + item.name + "</option>").join("");
+        $("payable-vendor").innerHTML = supplierOptions;
+        $("bank-create-vendor").innerHTML = supplierOptions;
+        $("bank-create-client").innerHTML = clientOptions;
+      }
+      function renderAll() {
+        renderPeople(); renderProperties(); renderContracts(); renderAccounts(); renderBank(); renderReport(); renderCategories(); renderBanks(); renderContacts(); renderDre();
+      }
+      function addContractAccounts(contract, items) {
         const property = byId(store.properties, contract.propertyId);
         const owner = property ? byId(store.owners, property.ownerId) : null;
+        const chargeItems = items || [];
         for (let index = 0; index < contract.months; index += 1) {
           const dueDate = addMonths(contract.start, index, contract.dueDay);
           const label = `Aluguel ${String(index + 1).padStart(2, "0")}/${contract.months}`;
           store.receivables.push({ id: newId(), contractId: contract.id, tenantId: contract.tenantId, propertyId: contract.propertyId, dueDate, description: label, rent: contract.rent, iptu: contract.iptu, condo: contract.condo, finePercent: contract.finePercent, total: contract.total, status: "Aberto", bank: "", paidDate: "" });
-          if (contract.iptu > 0) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: "Prefeitura", category: "IPTU", description: `IPTU - ${label}`, value: contract.iptu, status: "Aberto", bank: "", paidDate: "" });
-          if (contract.condo > 0) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: property?.building || "Condominio", category: "Condominio", description: `Condominio - ${label}`, value: contract.condo, status: "Aberto", bank: "", paidDate: "" });
-          if (contract.ownerPay > 0 && owner) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: owner.name, category: "Repasse proprietario", description: `Repasse - ${label}`, value: contract.ownerPay, status: "Aberto", bank: "", paidDate: "" });
+          if (contract.iptu > 0 && contract.iptuGenerates !== false) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: "Prefeitura", category: "IPTU", description: `IPTU - ${label}`, value: contract.iptu, status: "Aberto", bank: "", paidDate: "" });
+          if (contract.condo > 0 && contract.condoGenerates !== false) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: property?.building || "Condominio", category: "Condominio", description: `Condominio - ${label}`, value: contract.condo, status: "Aberto", bank: "", paidDate: "" });
+          if (contract.ownerPay > 0 && owner && contract.ownerPayGenerates !== false) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: owner.name, category: "Repasse proprietario", description: `Repasse - ${label}`, value: contract.ownerPay, status: "Aberto", bank: "", paidDate: "" });
+          chargeItems.forEach((charge) => {
+            if (charge.recurrence !== "mensal" || !charge.generatesEntry) return;
+            if (charge.type === "receita") store.receivables.push({ id: newId(), contractId: contract.id, tenantId: contract.tenantId, propertyId: contract.propertyId, dueDate, description: `${charge.description} - ${label}`, total: charge.value, status: "Aberto", bank: "", paidDate: "" });
+            else store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: "", category: "Outros", description: `${charge.description} - ${label}`, value: charge.value, status: "Aberto", bank: "", paidDate: "" });
+          });
         }
+        chargeItems.forEach((charge) => {
+          if (charge.recurrence !== "unico" || !charge.generatesEntry) return;
+          const dueDate = contract.start;
+          if (charge.type === "receita") store.receivables.push({ id: newId(), contractId: contract.id, tenantId: contract.tenantId, propertyId: contract.propertyId, dueDate, description: charge.description, total: charge.value, status: "Aberto", bank: "", paidDate: "" });
+          else store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: "", category: "Outros", description: charge.description, value: charge.value, status: "Aberto", bank: "", paidDate: "" });
+        });
       }
+      let contractDraftItems = [];
+      function renderCharges() {
+        table("charges-table", "empty-charges", contractDraftItems, (item) => [
+          item.type === "receita" ? "Receita" : "Despesa", item.description, money.format(item.value || 0), item.recurrence === "mensal" ? "Mensal" : "Unico", item.generatesEntry ? "Sim" : "Nao (so controle)",
+          `<button class="danger small" data-remove-charge="${item.id}">Remover</button>`,
+        ]);
+      }
+      $("contract-search").addEventListener("input", renderContracts);
+      $("dre-from").addEventListener("change", renderDre);
+      $("dre-to").addEventListener("change", renderDre);
+      $("add-charge").addEventListener("click", () => {
+        const description = $("charge-description").value.trim();
+        const chargeValue = value("charge-value");
+        if (!description || !chargeValue) { alert("Preencha descricao e valor do encargo."); return; }
+        contractDraftItems.push({ id: newId(), type: $("charge-type").value, description, value: chargeValue, recurrence: $("charge-recurrence").value, generatesEntry: $("charge-generates").value === "yes" });
+        $("charge-description").value = ""; $("charge-value").value = "";
+        renderCharges();
+      });
       function setForm(prefix, data) {
         Object.entries(data).forEach(([key, val]) => { const field = $(`${prefix}-${key}`); if (field) field.value = val ?? ""; });
       }
@@ -699,7 +853,7 @@
         if (idField) idField.value = "";
         const titleField = $(`${prefix}-form-title`);
         if (titleField) titleField.textContent = title;
-        if (prefix === "contract") { $("contract-start").value = today(); $("contract-months").value = 12; $("contract-due-day").value = 5; $("contract-fine").value = 10; }
+        if (prefix === "contract") { $("contract-start").value = today(); $("contract-months").value = 12; $("contract-due-day").value = 5; $("contract-fine").value = 10; $("contract-iptu-generates").value = "yes"; $("contract-condo-generates").value = "yes"; $("contract-owner-pay-generates").value = "yes"; contractDraftItems = []; renderCharges(); }
         if (prefix === "payable") { $("payable-repeat-months").disabled = true; }
       }
       function saveListForm(prefix, list, mapper, newTitle) {
@@ -733,8 +887,6 @@
         $("bank-create-date").value = entry.date || today();
         $("bank-create-value").value = Math.abs(Number(entry.amount || 0));
         $("bank-create-description").value = entry.description || "";
-        $("bank-create-vendor").value = entry.description || "";
-        $("bank-create-client").value = entry.description || "";
         const expenseCats = store.expenseCategories.filter((item) => item.type !== "receita");
         $("bank-create-category").innerHTML = expenseCats.length
           ? expenseCats.map((item) => "<option value=\"" + item.name + "\">" + item.name + "</option>").join("")
@@ -805,7 +957,7 @@
       });
       document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => $(button.dataset.closeModal).classList.remove("active")));
       document.querySelectorAll("[data-cancel-form]").forEach((button) => button.addEventListener("click", () => {
-        const names = { tenant: "Novo locatario", owner: "Novo proprietario", property: "Novo imovel", contract: "Novo contrato", category: "Nova categoria", payable: "Nova conta a pagar", bank: "Novo banco" };
+        const names = { tenant: "Novo locatario", owner: "Novo proprietario", property: "Novo imovel", contract: "Novo contrato", category: "Nova categoria", payable: "Nova conta a pagar", bank: "Novo banco", contact: "Nova pessoa" };
         resetForm(button.dataset.cancelForm, names[button.dataset.cancelForm]);
       }));
 
@@ -814,6 +966,21 @@
       $("property-form").addEventListener("submit", (event) => { event.preventDefault(); saveListForm("property", store.properties, () => ({ name: $("property-name").value.trim(), building: $("property-building").value.trim(), ownerId: $("property-owner").value, address: $("property-address").value.trim(), type: $("property-type").value, status: $("property-status").value }), "Novo imovel"); });
       $("category-form").addEventListener("submit", (event) => { event.preventDefault(); saveListForm("category", store.expenseCategories, () => ({ name: $("category-name").value.trim(), type: $("category-type").value, description: $("category-description").value.trim() }), "Nova categoria"); });
       $("bank-form").addEventListener("submit", (event) => { event.preventDefault(); saveListForm("bank", store.banks, () => ({ name: $("bank-name").value.trim() }), "Novo banco"); });
+      $("contact-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const types = [];
+        if ($("contact-type-cliente").checked) types.push("cliente");
+        if ($("contact-type-fornecedor").checked) types.push("fornecedor");
+        if ($("contact-type-funcionario").checked) types.push("funcionario");
+        if (!types.length) { alert("Selecione ao menos um tipo (Cliente, Fornecedor ou Funcionario)."); return; }
+        saveListForm("contact", store.people, () => ({
+          name: $("contact-name").value.trim(),
+          doc: $("contact-doc").value.trim(),
+          phone: $("contact-phone").value.trim(),
+          email: $("contact-email").value.trim(),
+          types,
+        }), "Nova pessoa");
+      });
       $("payable-repeat").addEventListener("change", () => {
         $("payable-repeat-months").disabled = $("payable-repeat").value !== "yes";
       });
@@ -843,13 +1010,24 @@
       $("contract-form").addEventListener("submit", (event) => {
         event.preventDefault();
         const itemId = $("contract-id").value;
-        const contract = { tenantId: $("contract-tenant").value, propertyId: $("contract-property").value, start: $("contract-start").value, months: value("contract-months"), dueDay: value("contract-due-day"), status: $("contract-status").value, rent: value("contract-rent"), iptu: value("contract-iptu"), condo: value("contract-condo"), finePercent: value("contract-fine"), ownerPay: value("contract-owner-pay") };
+        const contract = { tenantId: $("contract-tenant").value, propertyId: $("contract-property").value, start: $("contract-start").value, months: value("contract-months"), dueDay: value("contract-due-day"), status: $("contract-status").value, rent: value("contract-rent"), iptu: value("contract-iptu"), condo: value("contract-condo"), finePercent: value("contract-fine"), ownerPay: value("contract-owner-pay"), iptuGenerates: $("contract-iptu-generates").value === "yes", condoGenerates: $("contract-condo-generates").value === "yes", ownerPayGenerates: $("contract-owner-pay-generates").value === "yes" };
         if (!contract.tenantId) { alert("Cadastre um locatario antes de criar o contrato."); showView("locatarios"); return; }
         if (!contract.propertyId) { alert("Cadastre um imovel antes de criar o contrato."); showView("imoveis"); return; }
         contract.total = contract.rent + contract.iptu + contract.condo;
-        if (itemId) Object.assign(byId(store.contracts, itemId), contract);
-        else { contract.id = newId(); store.contracts.push(contract); addContractAccounts(contract); }
+        const existingItems = store.contractItems.filter((item) => item.contractId === itemId);
+        pendingDeletes.contractItems.push(...existingItems.map((item) => item.id));
+        store.contractItems = store.contractItems.filter((item) => item.contractId !== itemId);
+        if (itemId) {
+          Object.assign(byId(store.contracts, itemId), contract);
+          contractDraftItems.forEach((charge) => store.contractItems.push({ ...charge, contractId: itemId }));
+        } else {
+          contract.id = newId();
+          store.contracts.push(contract);
+          contractDraftItems.forEach((charge) => store.contractItems.push({ ...charge, contractId: contract.id }));
+          addContractAccounts(contract, contractDraftItems);
+        }
         const property = byId(store.properties, contract.propertyId); if (property) property.status = "Locado";
+        contractDraftItems = [];
         resetForm("contract", "Novo contrato"); save(); renderAll(); showView("receber");
       });
       $("payment-form").addEventListener("submit", (event) => {
@@ -905,9 +1083,40 @@
         if (t.dataset.editProperty) { const item = byId(store.properties, t.dataset.editProperty); setForm("property", { id: item.id, name: item.name, building: item.building, owner: item.ownerId, address: item.address, type: item.type, status: item.status }); $("property-form-title").textContent = "Editar imovel"; showView("imoveis"); }
         if (t.dataset.editCategory) { const item = byId(store.expenseCategories, t.dataset.editCategory); setForm("category", { id: item.id, name: item.name, type: item.type || "despesa", description: item.description }); $("category-form-title").textContent = "Editar categoria"; showView("categorias"); }
         if (t.dataset.editBank) { const item = byId(store.banks, t.dataset.editBank); setForm("bank", { id: item.id, name: item.name }); $("bank-form-title").textContent = "Editar banco"; showView("bancos"); }
-        if (t.dataset.editContract) { const item = byId(store.contracts, t.dataset.editContract); setForm("contract", { id: item.id, tenant: item.tenantId || item.clientId, property: item.propertyId, start: item.start, months: item.months, "due-day": item.dueDay, status: item.status, rent: item.rent, iptu: item.iptu, condo: item.condo, fine: item.finePercent, "owner-pay": item.ownerPay }); $("contract-form-title").textContent = "Editar contrato"; showView("contratos"); }
+        if (t.dataset.editContact) {
+          const item = byId(store.people, t.dataset.editContact);
+          setForm("contact", { id: item.id, name: item.name, doc: item.doc, phone: item.phone, email: item.email });
+          $("contact-type-cliente").checked = item.types.includes("cliente");
+          $("contact-type-fornecedor").checked = item.types.includes("fornecedor");
+          $("contact-type-funcionario").checked = item.types.includes("funcionario");
+          $("contact-form-title").textContent = "Editar pessoa";
+          showView("pessoas");
+        }
+        if (t.dataset.editContract) {
+          const item = byId(store.contracts, t.dataset.editContract);
+          setForm("contract", { id: item.id, tenant: item.tenantId || item.clientId, property: item.propertyId, start: item.start, months: item.months, "due-day": item.dueDay, status: item.status, rent: item.rent, iptu: item.iptu, condo: item.condo, fine: item.finePercent, "owner-pay": item.ownerPay });
+          $("contract-iptu-generates").value = item.iptuGenerates === false ? "no" : "yes";
+          $("contract-condo-generates").value = item.condoGenerates === false ? "no" : "yes";
+          $("contract-owner-pay-generates").value = item.ownerPayGenerates === false ? "no" : "yes";
+          contractDraftItems = store.contractItems.filter((charge) => charge.contractId === item.id).map((charge) => ({ ...charge }));
+          renderCharges();
+          $("contract-form-title").textContent = "Editar contrato";
+          showView("contratos");
+        }
         if (t.dataset.editReceivable) openAccount("receivable", t.dataset.editReceivable);
         if (t.dataset.editPayable) openAccount("payable", t.dataset.editPayable);
+        if (t.dataset.deleteReceivable) {
+          if (!confirm("Excluir esta conta a receber? Essa acao nao pode ser desfeita.")) return;
+          pendingDeletes.receivables.push(t.dataset.deleteReceivable);
+          store.receivables = store.receivables.filter((x) => x.id !== t.dataset.deleteReceivable);
+          save(); renderAll();
+        }
+        if (t.dataset.deletePayable) {
+          if (!confirm("Excluir esta conta a pagar? Essa acao nao pode ser desfeita.")) return;
+          pendingDeletes.payables.push(t.dataset.deletePayable);
+          store.payables = store.payables.filter((x) => x.id !== t.dataset.deletePayable);
+          save(); renderAll();
+        }
         if (t.dataset.payReceivable) openPayment("receivable", t.dataset.payReceivable);
         if (t.dataset.payPayable) openPayment("payable", t.dataset.payPayable);
         if (t.dataset.receipt) receipt(t.dataset.receipt);
@@ -940,6 +1149,15 @@
         if (t.dataset.deleteBank) {
           pendingDeletes.banks.push(t.dataset.deleteBank);
           store.banks = store.banks.filter((x) => x.id !== t.dataset.deleteBank);
+          save(); renderAll();
+        }
+        if (t.dataset.removeCharge) {
+          contractDraftItems = contractDraftItems.filter((item) => item.id !== t.dataset.removeCharge);
+          renderCharges();
+        }
+        if (t.dataset.deleteContact) {
+          pendingDeletes.people.push(t.dataset.deleteContact);
+          store.people = store.people.filter((x) => x.id !== t.dataset.deleteContact);
           save(); renderAll();
         }
         if (t.dataset.deleteProperty) {
