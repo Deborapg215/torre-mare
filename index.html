@@ -465,6 +465,23 @@
       </form>
     </div>
 
+    <div class="modal-backdrop" id="receipt-modal">
+      <div class="modal">
+        <h3>Editar Recibos</h3>
+        <input id="receipt-item-id" type="hidden" />
+        <p class="subtitle">Valor do lancamento: <strong id="receipt-total-label">R$ 0,00</strong></p>
+        <div class="form-grid">
+          <label>Descricao<input id="receipt-line-description" placeholder="Ex: Recibo de Aluguel" /></label>
+          <label>Valor<input id="receipt-line-value" type="number" min="0" step="0.01" /></label>
+          <label>Acao<button type="button" id="add-receipt-line">Adicionar recibo</button></label>
+        </div>
+        <table><thead><tr><th>Descricao</th><th>Valor</th><th></th></tr></thead><tbody id="receipt-lines-table"></tbody></table>
+        <p class="empty" id="empty-receipt-lines">Nenhum recibo adicionado.</p>
+        <p class="subtitle" id="receipt-sum-status">Soma: R$ 0,00 de R$ 0,00</p>
+        <div class="form-actions"><button type="button" data-close-modal="receipt-modal">Cancelar</button><button class="primary" type="button" id="generate-receipts">Gerar Recibo(s)</button></div>
+      </div>
+    </div>
+
     <script>
       const SUPABASE_URL = "https://pkwhruiltmifqlwjhqbn.supabase.co";
       const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrd2hydWlsdG1pZnFsd2pocWJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzQzNjgsImV4cCI6MjA5OTYxMDM2OH0.-Y5KLE1IVLg-6Sw1arOD0H93YYYcJDoDh-TTa9ANwE8";
@@ -723,8 +740,9 @@
         $("kpi-contratos").textContent = String(active.length);
       }
       function renderAccounts() {
-        const receivables = filterList("receivable", store.receivables);
-        const payables = filterList("payable", store.payables);
+        const sortByDue = (rows) => [...rows].sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
+        const receivables = sortByDue(filterList("receivable", store.receivables));
+        const payables = sortByDue(filterList("payable", store.payables));
         table("receivables-table", "empty-receivables", receivables, (item) => {
           const tenant = byId(store.tenants, item.tenantId || item.clientId);
           const property = byId(store.properties, item.propertyId);
@@ -859,7 +877,10 @@
         for (let index = 0; index < contract.months; index += 1) {
           const dueDate = addMonths(contract.start, index, contract.dueDay);
           const label = `Aluguel ${String(index + 1).padStart(2, "0")}/${contract.months}`;
-          store.receivables.push({ id: newId(), contractId: contract.id, tenantId: contract.tenantId, propertyId: contract.propertyId, dueDate, description: label, rent: contract.rent, iptu: contract.iptu, condo: contract.condo, finePercent: contract.finePercent, total: contract.total, status: "Aberto", bank: "", paidDate: "" });
+          const baseAmount = contract.ownerPay > 0 ? contract.ownerPay : contract.rent;
+          store.receivables.push({ id: newId(), contractId: contract.id, tenantId: contract.tenantId, propertyId: contract.propertyId, dueDate, description: label, category: "Aluguel", rent: contract.rent, iptu: contract.iptu, condo: contract.condo, finePercent: contract.finePercent, total: baseAmount, status: "Aberto", bank: "", paidDate: "" });
+          if (contract.iptu > 0 && contract.iptuGenerates !== false) store.receivables.push({ id: newId(), contractId: contract.id, tenantId: contract.tenantId, propertyId: contract.propertyId, dueDate, description: `IPTU - ${label}`, category: "IPTU", total: contract.iptu, status: "Aberto", bank: "", paidDate: "" });
+          if (contract.condo > 0 && contract.condoGenerates !== false) store.receivables.push({ id: newId(), contractId: contract.id, tenantId: contract.tenantId, propertyId: contract.propertyId, dueDate, description: `Condominio - ${label}`, category: "Condominio", total: contract.condo, status: "Aberto", bank: "", paidDate: "" });
           if (contract.iptu > 0 && contract.iptuGenerates !== false) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: "Prefeitura", category: "IPTU", description: `IPTU - ${label}`, value: contract.iptu, status: "Aberto", bank: "", paidDate: "" });
           if (contract.condo > 0 && contract.condoGenerates !== false) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: property?.building || "Condominio", category: "Condominio", description: `Condominio - ${label}`, value: contract.condo, status: "Aberto", bank: "", paidDate: "" });
           if (contract.ownerPay > 0 && owner && contract.ownerPayGenerates !== false) store.payables.push({ id: newId(), contractId: contract.id, propertyId: contract.propertyId, dueDate, vendor: owner.name, category: "Repasse proprietario", description: `Repasse - ${label}`, value: contract.ownerPay, status: "Aberto", bank: "", paidDate: "" });
@@ -1011,12 +1032,54 @@
         $("account-kind").value = kind; $("account-id").value = itemId; $("account-due").value = item.dueDate || ""; $("account-description").value = item.description || ""; $("account-total").value = itemAmount(kind, item); $("account-status").value = item.status || "Aberto"; $("account-bank").value = item.bank || ""; $("account-paid-date").value = item.paidDate || "";
         $("account-modal").classList.add("active");
       }
-      function receipt(itemId) {
+      let receiptDraftLines = [];
+      function openReceiptModal(itemId) {
         const item = byId(store.receivables, itemId);
         if (!item) return;
+        $("receipt-item-id").value = itemId;
+        $("receipt-total-label").textContent = money.format(item.total || 0);
+        receiptDraftLines = [{ id: newId(), description: item.description || "Recibo", value: Number(item.total || 0) }];
+        $("receipt-line-description").value = "";
+        $("receipt-line-value").value = "";
+        renderReceiptLines();
+        $("receipt-modal").classList.add("active");
+      }
+      function renderReceiptLines() {
+        table("receipt-lines-table", "empty-receipt-lines", receiptDraftLines, (line) => [
+          line.description, money.format(line.value || 0),
+          `<button class="small" data-edit-receipt-line="${line.id}">Editar</button> <button class="danger small" data-remove-receipt-line="${line.id}">Remover</button>`,
+        ]);
+        const item = byId(store.receivables, $("receipt-item-id").value);
+        const total = item ? Number(item.total || 0) : 0;
+        const sum = receiptDraftLines.reduce((acc, line) => acc + Number(line.value || 0), 0);
+        const status = $("receipt-sum-status");
+        status.textContent = `Soma: ${money.format(sum)} de ${money.format(total)}`;
+        status.style.color = Math.abs(sum - total) < 0.01 ? "" : "var(--danger)";
+      }
+      $("add-receipt-line").addEventListener("click", () => {
+        const description = $("receipt-line-description").value.trim();
+        const lineValue = value("receipt-line-value");
+        if (!description || !lineValue) { alert("Preencha descricao e valor do recibo."); return; }
+        receiptDraftLines.push({ id: newId(), description, value: lineValue });
+        $("receipt-line-description").value = "";
+        $("receipt-line-value").value = "";
+        renderReceiptLines();
+      });
+      $("generate-receipts").addEventListener("click", () => {
+        const item = byId(store.receivables, $("receipt-item-id").value);
+        if (!item) return;
+        if (!receiptDraftLines.length) { alert("Adicione ao menos um recibo."); return; }
+        const total = Number(item.total || 0);
+        const sum = receiptDraftLines.reduce((acc, line) => acc + Number(line.value || 0), 0);
+        if (Math.abs(sum - total) > 0.01) { alert("A soma dos recibos precisa ser igual ao valor do lancamento (" + money.format(total) + ")."); return; }
+        printReceipts(item, receiptDraftLines);
+        $("receipt-modal").classList.remove("active");
+      });
+      function printReceipts(item, lines) {
         const tenant = byId(store.tenants, item.tenantId || item.clientId);
         const property = byId(store.properties, item.propertyId);
-        const html = `<!doctype html><html><head><meta charset="utf-8"><title>Recibo Torre Mare</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#1d2522}.box{border:1px solid #ccc;padding:24px}h1{font-size:24px}.row{margin:12px 0}.sig{margin-top:70px;border-top:1px solid #333;width:320px;text-align:center;padding-top:8px}@media print{button{display:none}}</style></head><body><button onclick="print()">Imprimir / salvar PDF</button><div class="box"><h1>Recibo de Pagamento</h1><div class="row"><b>Locatario:</b> ${tenant?.name || "-"}</div><div class="row"><b>CPF/CNPJ:</b> ${tenant?.doc || "-"}</div><div class="row"><b>Imovel:</b> ${property?.name || "-"} - ${property?.address || ""}</div><div class="row"><b>Descricao:</b> ${item.description}</div><div class="row"><b>Valor:</b> ${money.format(item.total || 0)}</div><div class="row"><b>Recebimento:</b> ${asDate(item.paidDate)} - ${item.bank || "-"}</div><p>Recebemos do locatario acima o valor descrito referente ao contrato de locacao.</p><div class="sig">TORRE MARE</div></div></body></html>`;
+        const blocks = lines.map((line, index) => `<div class="box"${index > 0 ? ' style="page-break-before: always;"' : ""}><h1>${(line.description || "Recibo").toUpperCase()}</h1><div class="row"><b>Locatario:</b> ${tenant?.name || item.clientName || "-"}</div><div class="row"><b>CPF/CNPJ:</b> ${tenant?.doc || "-"}</div><div class="row"><b>Imovel:</b> ${property?.name || "-"} - ${property?.address || ""}</div><div class="row"><b>Competencia:</b> ${item.description || "-"}</div><div class="row"><b>Valor:</b> ${money.format(line.value || 0)}</div><div class="row"><b>Recebimento:</b> ${asDate(item.paidDate)} - ${item.bank || "-"}</div><p>Recebemos do locatario acima o valor descrito referente ao contrato de locacao.</p><div class="sig">TORRE MARE</div></div>`).join("");
+        const html = `<!doctype html><html><head><meta charset="utf-8"><title>Recibo Torre Mare</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#1d2522}.box{border:1px solid #ccc;padding:24px;margin-bottom:24px}h1{font-size:24px}.row{margin:12px 0}.sig{margin-top:70px;border-top:1px solid #333;width:320px;text-align:center;padding-top:8px}@media print{button{display:none}.box{margin-bottom:0}}</style></head><body><button onclick="print()">Imprimir / salvar PDF</button>${blocks}</body></html>`;
         const win = window.open("", "_blank");
         win.document.write(html);
         win.document.close();
@@ -1117,7 +1180,8 @@
         const contract = { tenantId: $("contract-tenant").value, propertyId: $("contract-property").value, start: $("contract-start").value, months: value("contract-months"), dueDay: value("contract-due-day"), status: $("contract-status").value, rent: value("contract-rent"), iptu: value("contract-iptu"), condo: value("contract-condo"), finePercent: value("contract-fine"), ownerPay: value("contract-owner-pay"), iptuGenerates: $("contract-iptu-generates").value === "yes", condoGenerates: $("contract-condo-generates").value === "yes", ownerPayGenerates: $("contract-owner-pay-generates").value === "yes" };
         if (!contract.tenantId) { alert("Cadastre um locatario antes de criar o contrato."); showView("locatarios"); return; }
         if (!contract.propertyId) { alert("Cadastre um imovel antes de criar o contrato."); showView("imoveis"); return; }
-        contract.total = contract.rent + (contract.iptuGenerates ? contract.iptu : 0) + (contract.condoGenerates ? contract.condo : 0);
+        const baseAmount = contract.ownerPay > 0 ? contract.ownerPay : contract.rent;
+        contract.total = baseAmount + (contract.iptuGenerates ? contract.iptu : 0) + (contract.condoGenerates ? contract.condo : 0);
         const existingItems = store.contractItems.filter((item) => item.contractId === itemId);
         pendingDeletes.contractItems.push(...existingItems.map((item) => item.id));
         store.contractItems = store.contractItems.filter((item) => item.contractId !== itemId);
@@ -1223,7 +1287,7 @@
         }
         if (t.dataset.payReceivable) openPayment("receivable", t.dataset.payReceivable);
         if (t.dataset.payPayable) openPayment("payable", t.dataset.payPayable);
-        if (t.dataset.receipt) receipt(t.dataset.receipt);
+        if (t.dataset.receipt) openReceiptModal(t.dataset.receipt);
         if (t.dataset.matchBank) { const entry = byId(store.bankEntries, t.dataset.matchBank); if (entry) { autoMatchBank(entry); save(); renderAll(); } }
         if (t.dataset.createFromBank) openBankCreate(t.dataset.createFromBank);
         if (t.dataset.deleteTenant) {
@@ -1258,6 +1322,20 @@
         if (t.dataset.removeCharge) {
           contractDraftItems = contractDraftItems.filter((item) => item.id !== t.dataset.removeCharge);
           renderCharges();
+        }
+        if (t.dataset.removeReceiptLine) {
+          receiptDraftLines = receiptDraftLines.filter((line) => line.id !== t.dataset.removeReceiptLine);
+          renderReceiptLines();
+        }
+        if (t.dataset.editReceiptLine) {
+          const line = receiptDraftLines.find((entry) => entry.id === t.dataset.editReceiptLine);
+          if (line) {
+            $("receipt-line-description").value = line.description;
+            $("receipt-line-value").value = line.value;
+            receiptDraftLines = receiptDraftLines.filter((entry) => entry.id !== t.dataset.editReceiptLine);
+            renderReceiptLines();
+            $("receipt-line-description").focus();
+          }
         }
         if (t.dataset.deleteContact) {
           pendingDeletes.people.push(t.dataset.deleteContact);
