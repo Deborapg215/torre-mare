@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Torre Mare - ERP Imobiliario</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
       .login-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; }
       .login-box { width: min(380px, 92vw); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 32px; box-shadow: 0 22px 60px rgba(0,0,0,0.08); }
@@ -227,7 +228,7 @@
           <article class="card" style="margin-top: 14px">
             <span>Contratos cadastrados</span>
             <div class="form-grid" style="margin-bottom: 12px"><label>Buscar<input id="contract-search" placeholder="Locatario ou imovel" /></label></div>
-            <table><thead><tr><th>Imovel</th><th>Locatario</th><th>Aluguel</th><th>IPTU</th><th>Condominio</th><th>Total mensal</th><th>Parcelas</th><th></th></tr></thead><tbody id="contracts-table"></tbody></table>
+            <table><thead><tr><th>Imovel</th><th>Locatario</th><th>Aluguel</th><th>IPTU</th><th>Condominio</th><th>Total mensal</th><th>Parcelas</th><th>Vencimento Contrato</th><th></th></tr></thead><tbody id="contracts-table"></tbody></table>
             <p class="empty" id="empty-contracts">Nenhum contrato cadastrado ainda.</p>
           </article>
         </section>
@@ -313,11 +314,14 @@
             <span id="bank-form-title">Novo banco</span>
             <form id="bank-form">
               <input id="bank-id" type="hidden" />
-              <div class="form-grid"><label>Nome<input id="bank-name" required placeholder="Ex: Itau, Santander, Caixa" /></label></div>
+              <div class="form-grid">
+                <label>Nome<input id="bank-name" required placeholder="Ex: Itau, Santander, Caixa" /></label>
+                <label>Saldo inicial<input id="bank-initial-balance" type="number" step="0.01" value="0" /></label>
+              </div>
               <div class="form-actions"><button type="button" data-cancel-form="bank">Limpar</button><button class="primary" type="submit">Salvar banco</button></div>
             </form>
           </article>
-          <article class="card" style="margin-top: 14px"><span>Bancos cadastrados</span><table><thead><tr><th>Nome</th><th></th></tr></thead><tbody id="banks-table"></tbody></table><p class="empty" id="empty-banks">Nenhum banco cadastrado ainda.</p></article>
+          <article class="card" style="margin-top: 14px"><span>Bancos cadastrados</span><table><thead><tr><th>Nome</th><th>Saldo inicial</th><th></th></tr></thead><tbody id="banks-table"></tbody></table><p class="empty" id="empty-banks">Nenhum banco cadastrado ainda.</p></article>
         </section>
 
         <section class="view" id="view-pessoas">
@@ -360,7 +364,12 @@
             <article class="card"><span>Recebido</span><strong id="report-received">R$ 0,00</strong></article>
             <article class="card"><span>Pago</span><strong id="report-paid">R$ 0,00</strong></article>
           </section>
-          <article class="card" style="margin-top: 14px"><span>Relatorio</span><table><thead><tr><th>Data</th><th>Pessoa</th><th>Imovel</th><th>Descricao</th><th>Valor</th><th>Status</th><th>Banco</th></tr></thead><tbody id="report-table"></tbody></table><p class="empty" id="empty-report">Nenhum item encontrado.</p></article>
+          <article class="card" style="margin-top: 14px">
+            <span>Relatorio</span>
+            <div class="form-actions" style="margin-bottom: 10px"><button type="button" id="export-report">Exportar para Excel</button></div>
+            <table><thead><tr><th>Data</th><th>Pessoa</th><th>Imovel</th><th>Descricao</th><th>Valor</th><th>Status</th><th>Banco</th></tr></thead><tbody id="report-table"></tbody></table>
+            <p class="empty" id="empty-report">Nenhum item encontrado.</p>
+          </article>
 
           <article class="card" style="margin-top: 14px">
             <span>DRE - Regime de Caixa</span>
@@ -369,6 +378,7 @@
               <label>De<input id="dre-from" type="date" /></label>
               <label>Ate<input id="dre-to" type="date" /></label>
             </div>
+            <div class="form-actions" style="margin-top: 10px"><button type="button" id="export-dre">Exportar para Excel</button></div>
           </article>
           <section class="kpis" style="margin-top: 14px">
             <article class="card"><span>Total de Receitas</span><strong id="dre-receitas">R$ 0,00</strong></article>
@@ -379,6 +389,23 @@
             <article class="card"><span>Receitas por categoria</span><table><thead><tr><th>Categoria</th><th>Valor</th></tr></thead><tbody id="dre-receitas-table"></tbody></table><p class="empty" id="empty-dre-receitas">Nenhuma receita recebida no periodo.</p></article>
             <article class="card"><span>Despesas por categoria</span><table><thead><tr><th>Categoria</th><th>Valor</th></tr></thead><tbody id="dre-despesas-table"></tbody></table><p class="empty" id="empty-dre-despesas">Nenhuma despesa paga no periodo.</p></article>
           </div>
+
+          <article class="card" style="margin-top: 14px">
+            <span>Fluxo de Caixa</span>
+            <p class="subtitle" style="margin: 4px 0 12px">Saldo inicial do banco (cadastrado em Bancos) + recebido - pago no periodo.</p>
+            <div class="filters">
+              <label>Banco<select id="cashflow-bank"></select></label>
+              <label>De<input id="cashflow-from" type="date" /></label>
+              <label>Ate<input id="cashflow-to" type="date" /></label>
+            </div>
+            <div class="form-actions" style="margin-top: 10px"><button type="button" id="export-cashflow">Exportar para Excel</button></div>
+          </article>
+          <section class="kpis" style="margin-top: 14px">
+            <article class="card"><span>Saldo Inicial</span><strong id="cashflow-initial">R$ 0,00</strong></article>
+            <article class="card"><span>Total de Receitas</span><strong id="cashflow-in">R$ 0,00</strong></article>
+            <article class="card"><span>Total de Despesas</span><strong id="cashflow-out">R$ 0,00</strong></article>
+            <article class="card"><span>Saldo Final</span><strong id="cashflow-final">R$ 0,00</strong></article>
+          </section>
         </section>
       </main>
     </div>
@@ -459,7 +486,7 @@
         if (entity === "payables") return { id: item.id, contract_id: item.contractId || null, property_id: item.propertyId || null, supplier: item.vendor || null, category: item.category || null, due_date: item.dueDate || null, description: item.description || null, value: item.value || 0, status: item.status || "Aberto", bank: item.bank || null, paid_date: item.paidDate || null };
         if (entity === "bankEntries") return { id: item.id, bank: item.bank || null, entry_date: item.date || null, amount: item.amount || 0, description: item.description || null, fitid: item.fitid || null, status: item.status || "Importado", imported_at: item.importedAt || null };
         if (entity === "expenseCategories") return { id: item.id, name: item.name, description: item.description || null, type: item.type || "despesa" };
-        if (entity === "banks") return { id: item.id, name: item.name };
+        if (entity === "banks") return { id: item.id, name: item.name, initial_balance: item.initialBalance || 0 };
         if (entity === "people") return { id: item.id, name: item.name, doc: item.doc || null, phone: item.phone || null, email: item.email || null, is_client: !!(item.types && item.types.includes("cliente")), is_supplier: !!(item.types && item.types.includes("fornecedor")), is_employee: !!(item.types && item.types.includes("funcionario")) };
         return item;
       }
@@ -473,7 +500,7 @@
         if (entity === "payables") return { id: row.id, contractId: row.contract_id || "", propertyId: row.property_id || "", vendor: row.supplier || "", category: row.category || "", dueDate: row.due_date || "", description: row.description || "", value: Number(row.value || 0), status: row.status || "Aberto", bank: row.bank || "", paidDate: row.paid_date || "" };
         if (entity === "bankEntries") return { id: row.id, bank: row.bank || "", date: row.entry_date || "", amount: Number(row.amount || 0), description: row.description || "", fitid: row.fitid || "", status: row.status || "Importado", importedAt: row.imported_at || "" };
         if (entity === "expenseCategories") return { id: row.id, name: row.name, description: row.description || "", type: row.type || "despesa" };
-        if (entity === "banks") return { id: row.id, name: row.name };
+        if (entity === "banks") return { id: row.id, name: row.name, initialBalance: Number(row.initial_balance || 0) };
         if (entity === "people") {
           const types = [];
           if (row.is_client) types.push("cliente");
@@ -677,7 +704,15 @@
         table("contracts-table", "empty-contracts", visible, (item) => {
           const tenant = byId(store.tenants, item.tenantId || item.clientId);
           const property = byId(store.properties, item.propertyId);
-          return [property ? property.name : "Imovel removido", tenant ? tenant.name : "Locatario removido", money.format(item.rent || 0), money.format(item.iptu || 0), money.format(item.condo || 0), money.format(item.total || 0), String(item.months || 0), `<button class="small" data-edit-contract="${item.id}">Editar</button> <button class="danger small" data-delete-contract="${item.id}">Excluir</button>`];
+          const startDay = item.start ? Number(item.start.slice(8, 10)) : 1;
+          const contractEnd = item.start ? addMonths(item.start, item.months, startDay) : "";
+          const daysLeft = contractEnd ? Math.round((new Date(`${contractEnd}T00:00:00`) - new Date(`${today()}T00:00:00`)) / 86400000) : null;
+          let endLabel = asDate(contractEnd);
+          if (item.status === "Ativo" && daysLeft !== null) {
+            if (daysLeft < 0) endLabel = `<span style="color: var(--danger); font-weight: 600">${endLabel} (vencido)</span>`;
+            else if (daysLeft <= 60) endLabel = `<span style="color: var(--warn); font-weight: 600">${endLabel} (${daysLeft}d)</span>`;
+          }
+          return [property ? property.name : "Imovel removido", tenant ? tenant.name : "Locatario removido", money.format(item.rent || 0), money.format(item.iptu || 0), money.format(item.condo || 0), money.format(item.total || 0), String(item.months || 0), endLabel, `<button class="small" data-edit-contract="${item.id}">Editar</button> <button class="danger small" data-delete-contract="${item.id}">Excluir</button>`];
         });
         table("recent-contracts", "empty-recent", store.contracts.slice(-5).reverse(), (item) => {
           const tenant = byId(store.tenants, item.tenantId || item.clientId);
@@ -756,6 +791,20 @@
         table("dre-receitas-table", "empty-dre-receitas", revenueRows, (row) => [row[0], money.format(row[1])]);
         table("dre-despesas-table", "empty-dre-despesas", expenseRows, (row) => [row[0], money.format(row[1])]);
       }
+      function renderCashflow() {
+        const bankName = $("cashflow-bank").value;
+        const bank = store.banks.find((item) => item.name === bankName);
+        const initial = bank ? Number(bank.initialBalance || 0) : 0;
+        const from = $("cashflow-from").value;
+        const to = $("cashflow-to").value;
+        const inRange = (dateStr) => dateStr && (!from || dateStr >= from) && (!to || dateStr <= to);
+        const totalIn = store.receivables.filter((item) => item.status === "Pago" && item.bank === bankName && inRange(item.paidDate)).reduce((sum, item) => sum + Number(item.total || 0), 0);
+        const totalOut = store.payables.filter((item) => item.status === "Pago" && item.bank === bankName && inRange(item.paidDate)).reduce((sum, item) => sum + Number(item.value || 0), 0);
+        $("cashflow-initial").textContent = money.format(initial);
+        $("cashflow-in").textContent = money.format(totalIn);
+        $("cashflow-out").textContent = money.format(totalOut);
+        $("cashflow-final").textContent = money.format(initial + totalIn - totalOut);
+      }
       function renderCategories() {
         table("categories-table", "empty-categories", store.expenseCategories, (item) => [
           item.name, item.type === "receita" ? "Receita" : "Despesa", item.description || "-",
@@ -770,7 +819,7 @@
       }
       function renderBanks() {
         table("banks-table", "empty-banks", store.banks, (item) => [
-          item.name,
+          item.name, money.format(item.initialBalance || 0),
           `<button class="small" data-edit-bank="${item.id}">Editar</button> <button class="danger small" data-delete-bank="${item.id}">Excluir</button>`,
         ]);
         const options = store.banks.length
@@ -779,6 +828,7 @@
         $("ofx-bank").innerHTML = options;
         $("payment-bank").innerHTML = options;
         $("account-bank").innerHTML = "<option value=\"\">Selecione</option>" + store.banks.map((item) => "<option value=\"" + item.name + "\">" + item.name + "</option>").join("");
+        $("cashflow-bank").innerHTML = options;
       }
       function typeLabel(types) {
         const map = { cliente: "Cliente", fornecedor: "Fornecedor", funcionario: "Funcionario" };
@@ -800,7 +850,7 @@
         $("bank-create-client").innerHTML = clientOptions;
       }
       function renderAll() {
-        renderPeople(); renderProperties(); renderContracts(); renderAccounts(); renderBank(); renderReport(); renderCategories(); renderBanks(); renderContacts(); renderDre();
+        renderPeople(); renderProperties(); renderContracts(); renderAccounts(); renderBank(); renderReport(); renderCategories(); renderBanks(); renderContacts(); renderDre(); renderCashflow();
       }
       function addContractAccounts(contract, items) {
         const property = byId(store.properties, contract.propertyId);
@@ -836,6 +886,60 @@
       $("contract-search").addEventListener("input", renderContracts);
       $("dre-from").addEventListener("change", renderDre);
       $("dre-to").addEventListener("change", renderDre);
+      $("cashflow-bank").addEventListener("change", renderCashflow);
+      $("cashflow-from").addEventListener("change", renderCashflow);
+      $("cashflow-to").addEventListener("change", renderCashflow);
+      function exportRowsToExcel(filename, headers, rows) {
+        if (!window.XLSX) { alert("Biblioteca de exportacao nao carregou. Verifique sua conexao e tente novamente."); return; }
+        const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, sheet, "Dados");
+        XLSX.writeFile(workbook, filename);
+      }
+      $("export-report").addEventListener("click", () => {
+        const kind = $("report-type").value;
+        const rows = applyAccountFilter(kind === "receivable" ? store.receivables : store.payables, {
+          kind, text: $("report-text").value, from: $("report-from").value, to: $("report-to").value, status: $("report-status").value, bank: $("report-bank").value,
+        });
+        const data = rows.map((item) => {
+          const property = byId(store.properties, item.propertyId);
+          const person = kind === "receivable" ? (byId(store.tenants, item.tenantId || item.clientId)?.name || item.clientName) : item.vendor;
+          return [asDate(item.dueDate), person || "-", property ? property.name : "-", item.description || item.category || "-", Number(itemAmount(kind, item) || 0), item.status, item.bank || "-"];
+        });
+        exportRowsToExcel("relatorio-torre-mare.xlsx", ["Data", "Pessoa", "Imovel", "Descricao", "Valor", "Status", "Banco"], data);
+      });
+      $("export-dre").addEventListener("click", () => {
+        const from = $("dre-from").value;
+        const to = $("dre-to").value;
+        const inRange = (dateStr) => dateStr && (!from || dateStr >= from) && (!to || dateStr <= to);
+        const revenueGroups = {};
+        store.receivables.filter((item) => item.status === "Pago" && inRange(item.paidDate)).forEach((item) => {
+          const label = item.category || (item.description && item.description.indexOf("Aluguel") === 0 ? "Aluguel" : "Outras receitas");
+          revenueGroups[label] = (revenueGroups[label] || 0) + Number(item.total || 0);
+        });
+        const expenseGroups = {};
+        store.payables.filter((item) => item.status === "Pago" && inRange(item.paidDate)).forEach((item) => {
+          const label = item.category || "Outras despesas";
+          expenseGroups[label] = (expenseGroups[label] || 0) + Number(item.value || 0);
+        });
+        const rows = [["RECEITAS", ""]];
+        Object.entries(revenueGroups).forEach(([label, total]) => rows.push([label, total]));
+        rows.push(["DESPESAS", ""]);
+        Object.entries(expenseGroups).forEach(([label, total]) => rows.push([label, total]));
+        exportRowsToExcel("dre-torre-mare.xlsx", ["Categoria", "Valor"], rows);
+      });
+      $("export-cashflow").addEventListener("click", () => {
+        const bankName = $("cashflow-bank").value;
+        const bank = store.banks.find((item) => item.name === bankName);
+        const initial = bank ? Number(bank.initialBalance || 0) : 0;
+        const from = $("cashflow-from").value;
+        const to = $("cashflow-to").value;
+        const inRange = (dateStr) => dateStr && (!from || dateStr >= from) && (!to || dateStr <= to);
+        const totalIn = store.receivables.filter((item) => item.status === "Pago" && item.bank === bankName && inRange(item.paidDate)).reduce((sum, item) => sum + Number(item.total || 0), 0);
+        const totalOut = store.payables.filter((item) => item.status === "Pago" && item.bank === bankName && inRange(item.paidDate)).reduce((sum, item) => sum + Number(item.value || 0), 0);
+        const rows = [["Saldo Inicial", initial], ["Total de Receitas", totalIn], ["Total de Despesas", totalOut], ["Saldo Final", initial + totalIn - totalOut]];
+        exportRowsToExcel("fluxo-caixa-torre-mare.xlsx", ["Item", "Valor"], rows);
+      });
       $("add-charge").addEventListener("click", () => {
         const description = $("charge-description").value.trim();
         const chargeValue = value("charge-value");
@@ -965,7 +1069,7 @@
       $("owner-form").addEventListener("submit", (event) => { event.preventDefault(); saveListForm("owner", store.owners, () => ({ name: $("owner-name").value.trim(), doc: $("owner-doc").value.trim(), phone: $("owner-phone").value.trim() }), "Novo proprietario"); });
       $("property-form").addEventListener("submit", (event) => { event.preventDefault(); saveListForm("property", store.properties, () => ({ name: $("property-name").value.trim(), building: $("property-building").value.trim(), ownerId: $("property-owner").value, address: $("property-address").value.trim(), type: $("property-type").value, status: $("property-status").value }), "Novo imovel"); });
       $("category-form").addEventListener("submit", (event) => { event.preventDefault(); saveListForm("category", store.expenseCategories, () => ({ name: $("category-name").value.trim(), type: $("category-type").value, description: $("category-description").value.trim() }), "Nova categoria"); });
-      $("bank-form").addEventListener("submit", (event) => { event.preventDefault(); saveListForm("bank", store.banks, () => ({ name: $("bank-name").value.trim() }), "Novo banco"); });
+      $("bank-form").addEventListener("submit", (event) => { event.preventDefault(); saveListForm("bank", store.banks, () => ({ name: $("bank-name").value.trim(), initialBalance: value("bank-initial-balance") }), "Novo banco"); });
       $("contact-form").addEventListener("submit", (event) => {
         event.preventDefault();
         const types = [];
@@ -1013,7 +1117,7 @@
         const contract = { tenantId: $("contract-tenant").value, propertyId: $("contract-property").value, start: $("contract-start").value, months: value("contract-months"), dueDay: value("contract-due-day"), status: $("contract-status").value, rent: value("contract-rent"), iptu: value("contract-iptu"), condo: value("contract-condo"), finePercent: value("contract-fine"), ownerPay: value("contract-owner-pay"), iptuGenerates: $("contract-iptu-generates").value === "yes", condoGenerates: $("contract-condo-generates").value === "yes", ownerPayGenerates: $("contract-owner-pay-generates").value === "yes" };
         if (!contract.tenantId) { alert("Cadastre um locatario antes de criar o contrato."); showView("locatarios"); return; }
         if (!contract.propertyId) { alert("Cadastre um imovel antes de criar o contrato."); showView("imoveis"); return; }
-        contract.total = contract.rent + contract.iptu + contract.condo;
+        contract.total = contract.rent + (contract.iptuGenerates ? contract.iptu : 0) + (contract.condoGenerates ? contract.condo : 0);
         const existingItems = store.contractItems.filter((item) => item.contractId === itemId);
         pendingDeletes.contractItems.push(...existingItems.map((item) => item.id));
         store.contractItems = store.contractItems.filter((item) => item.contractId !== itemId);
@@ -1082,7 +1186,7 @@
         if (t.dataset.editOwner) { const item = byId(store.owners, t.dataset.editOwner); setForm("owner", { id: item.id, name: item.name, doc: item.doc, phone: item.phone }); $("owner-form-title").textContent = "Editar proprietario"; showView("proprietarios"); }
         if (t.dataset.editProperty) { const item = byId(store.properties, t.dataset.editProperty); setForm("property", { id: item.id, name: item.name, building: item.building, owner: item.ownerId, address: item.address, type: item.type, status: item.status }); $("property-form-title").textContent = "Editar imovel"; showView("imoveis"); }
         if (t.dataset.editCategory) { const item = byId(store.expenseCategories, t.dataset.editCategory); setForm("category", { id: item.id, name: item.name, type: item.type || "despesa", description: item.description }); $("category-form-title").textContent = "Editar categoria"; showView("categorias"); }
-        if (t.dataset.editBank) { const item = byId(store.banks, t.dataset.editBank); setForm("bank", { id: item.id, name: item.name }); $("bank-form-title").textContent = "Editar banco"; showView("bancos"); }
+        if (t.dataset.editBank) { const item = byId(store.banks, t.dataset.editBank); setForm("bank", { id: item.id, name: item.name, "initial-balance": item.initialBalance }); $("bank-form-title").textContent = "Editar banco"; showView("bancos"); }
         if (t.dataset.editContact) {
           const item = byId(store.people, t.dataset.editContact);
           setForm("contact", { id: item.id, name: item.name, doc: item.doc, phone: item.phone, email: item.email });
